@@ -48,7 +48,6 @@ def draw_load(p_load, loads):
     w_load.addstr(1, half_screen, str(n_cpus), curses.A_BOLD)
     w_load.addstr(1, x - (1 + len(str(n_cpus * load_multiplier))), 
                         str(n_cpus * load_multiplier), curses.A_BOLD)
-    loads = [1, 4, 40]
     for load in loads:
         load = float(load)
         too_big = False
