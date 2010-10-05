@@ -5,6 +5,8 @@ import sys
 import time
 import signal
 import curses
+import datetime
+from curses import panel
 # devel
 import inspect
 
@@ -31,37 +33,53 @@ def draw_load(scr, load, n_cpus):
         squares = prop * half_screen
     return '#'*int(squares)
 
-def update_screen(scr):
-    scr_y, scr_x = scr.getmaxyx()
-    scr.addstr(10, 20, "%s, %s" % (scr_x, scr_y))
-    load_avg = get_load()
-    scr.addstr(1, 15, get_load())
-    scr.addstr(2, 17, str(get_cpus()))
-    scr.addstr(2, 17, str(get_cpus()))
-    scr.addstr(3, 8, str(delay))
-    scr.addstr(5, 1, draw_load(scr, 2, get_cpus()))
-    scr.refresh()
-
-def main(stdscr, **kwargs):
-    scr = stdscr
-    scr_y, scr_x = scr.getmaxyx()
-    if (scr_x < 40) or (scr_y < 10):
+def check_screen_size(x, y):
+    if (x < 40) or (y < 10):
         raise Exception("Minimum terminal size is 40x10")
         sys.exit(2)
-    curses.curs_set(0)
-    scr.nodelay(1)
-    scr.addstr(1, 1, "Load Average:", curses.A_BOLD)
-    scr.addstr(2, 1, "Number of CPUS:", curses.A_BOLD)
-    scr.addstr(3, 1, "Delay:", curses.A_BOLD)
 
+def update_header(p_header):
+    w_header = p_header.window()
+    w_header.erase()
+    w_header.box()
+    w_header.addstr(1, 1, "Load Average:", curses.A_BOLD)
+    w_header.addstr(2, 1, "Number of CPUs:", curses.A_BOLD)
+    w_header.addstr(3, 1, "Time:", curses.A_BOLD)
+    w_header.addstr(1, 15, get_load())
+    w_header.addstr(2, 17, str(get_cpus()))
+    w_header.addstr(3, 8, str(datetime.datetime.now()))
+    update_screen()
+
+def update_screen():
+    panel.update_panels()
+    curses.doupdate()
+
+def update_load(p_load):
+    w_load = p_load.window()
+    w_load.erase()
+    w_load.box()
+    update_screen()
+
+def main(stdscr):
+    scr = stdscr
+    scr.nodelay(0)
+    curses.curs_set(0)
+    w_header = curses.newwin(5, 0, 0, 0)
+    w_load = curses.newwin(0,0,5,0)
+    p_header = panel.new_panel(w_header)
+    p_load = panel.new_panel(w_load)
+    update_header(p_header)
+    update_load(p_load)
     while 1:
         ch = scr.getch()
         if ch == ord('q'):
             break
         else:
-            update_screen(scr)
+            y, x = scr.getmaxyx()
+            check_screen_size(x, y)
+            update_header(p_header)
+            update_load(p_load)
             time.sleep(delay)
-
     curses.endwin()
 
 signal.signal(signal.SIGWINCH, signal.SIG_IGN)
