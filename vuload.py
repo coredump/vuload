@@ -18,7 +18,6 @@
 
 import os
 import sys
-import time
 import signal
 import curses
 import datetime
@@ -49,16 +48,28 @@ def draw_load(p_load, loads):
     w_load.addstr(1, half_screen, str(n_cpus), curses.A_BOLD)
     w_load.addstr(1, x - (1 + len(str(n_cpus * load_multiplier))), 
                         str(n_cpus * load_multiplier), curses.A_BOLD)
+    loads = [1, 4, 40]
     for load in loads:
-        if float(load) <= n_cpus:
+        load = float(load)
+        too_big = False
+        if load > n_cpus * load_multiplier:
+            too_big = True
+            true_load = load
+            load = n_cpus * load_multiplier
+        if load <= n_cpus:
             prop = float(load) / n_cpus
             squares = prop * half_screen
             w_load.hline(initial_line,1,chr(219),int(squares))
             initial_line +=1
-        elif float(load) > n_cpus:
+        elif load > n_cpus:
             prop = (float(load)) / (n_cpus * load_multiplier)
             squares = half_screen + (prop * half_screen)
-            w_load.hline(initial_line,1,chr(219),int(squares - 1))
+            w_load.hline(initial_line,1,chr(219),int(squares - 2))
+            if too_big:
+               diff = int(true_load - load)
+               end_line = x - (2 + len(str(diff)))
+               w_load.addstr(initial_line, end_line, '+' + str(diff), 
+                                curses.A_BOLD)
             initial_line +=1
 
 def check_screen_size(x, y):
@@ -72,12 +83,13 @@ def update_header(p_header):
     w_header = p_header.window()
     w_header.erase()
     w_header.box()
-    w_header.addstr(1, 1, "Load Average:", curses.A_BOLD)
-    w_header.addstr(2, 1, "Number of CPUs:", curses.A_BOLD)
-    w_header.addstr(3, 1, "Time:", curses.A_BOLD)
-    w_header.addstr(1, 15, load)
-    w_header.addstr(2, 17, str(get_cpus()))
-    w_header.addstr(3, 8, str(datetime.datetime.now()))
+    w_header.addstr(1, 1, "Time:")
+    w_header.addstr(1, 16, "Hostname:")
+    w_header.addstr(2, 1, "Load Average:")
+    w_header.addstr(1, 26, os.uname()[1], curses.A_BOLD)
+    w_header.addstr(1, 7, str(datetime.datetime.now().strftime('%H:%M:%S')), 
+                    curses.A_BOLD)
+    w_header.addstr(2, 15, load, curses.A_BOLD)
     update_screen()
 
 def update_load(p_load):
@@ -94,15 +106,16 @@ def update_screen():
 def main(stdscr):
     scr = stdscr
     scr.nodelay(1)
+    scr.timeout(int(delay) * 1000) # more responsive feeling than time.sleep
     curses.curs_set(0)
-    w_header = curses.newwin(5, 0, 0, 0)
-    w_load = curses.newwin(6,0,5,0)
+    scr.addstr(10,1, "Press: 'q' to exit.", curses.A_BOLD)
+    w_header = curses.newwin(4, 0, 0, 0)
+    w_load = curses.newwin(6,0,4,0)
     p_header = panel.new_panel(w_header)
     p_load = panel.new_panel(w_load)
     update_header(p_header)
     update_load(p_load)
     while 1:
-        time.sleep(delay)
         ch = scr.getch()
         if ch == ord('q'):
             break
